@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 
@@ -6,8 +6,15 @@ export const metadata: Metadata = {
   title: 'قراءة يوم العهد الجديد',
   description: 'لنتسكن فيكم كلمة المسيح بغنى - خطة قراءة العهد الجديد',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/icon-192x192.png',
   },
+  manifest: '/manifest.json',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#4f46e5',
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
@@ -20,6 +27,11 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="قراءة يوم" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className="min-h-screen">
         <Toaster

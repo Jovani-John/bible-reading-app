@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { FiBell } from 'react-icons/fi';
+import { FiBell, FiCheck } from 'react-icons/fi';
 import Button from './ui/Button';
-import { requestNotificationPermission } from '@/lib/utils';
+import { requestNotificationPermission, sendTestNotification, checkNotificationSupport } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface NotificationSettingsProps {
@@ -21,16 +21,37 @@ export default function NotificationSettings({
   onTimeChange,
   onSave
 }: NotificationSettingsProps) {
+  const [isTesting, setIsTesting] = useState(false);
   
   const handleToggle = async () => {
     if (!enabled) {
+      // التحقق من دعم الإشعارات
+      if (!checkNotificationSupport()) {
+        toast.error('المتصفح لا يدعم الإشعارات');
+        return;
+      }
+
       const granted = await requestNotificationPermission();
       if (!granted) {
         toast.error('يجب السماح بالإشعارات أولاً');
         return;
       }
+      
+      toast.success('تم تفعيل الإشعارات بنجاح');
     }
     onToggle();
+  };
+
+  const handleTestNotification = async () => {
+    setIsTesting(true);
+    try {
+      await sendTestNotification('هذا إشعار تجريبي للتأكد من عمل الإشعارات');
+      toast.success('تم إرسال إشعار تجريبي');
+    } catch (error) {
+      toast.error('فشل إرسال الإشعار التجريبي');
+    } finally {
+      setIsTesting(false);
+    }
   };
   
   return (
@@ -66,23 +87,44 @@ export default function NotificationSettings({
         
         {/* Time Picker */}
         {enabled && (
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">
-              وقت الإشعار
-            </label>
-            <div className="flex gap-4">
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => onTimeChange(e.target.value)}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:outline-none transition-colors"
-              />
-              <Button
-                onClick={onSave}
-                variant="primary"
-              >
-                حفظ
-              </Button>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
+                وقت الإشعار
+              </label>
+              <div className="flex gap-4">
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => onTimeChange(e.target.value)}
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:outline-none transition-colors"
+                />
+                <Button
+                  onClick={onSave}
+                  variant="primary"
+                >
+                  حفظ
+                </Button>
+              </div>
+            </div>
+
+            {/* Test Notification Button */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-gray-800">اختبار الإشعارات</div>
+                  <div className="text-sm text-gray-600">تأكد من عمل الإشعارات</div>
+                </div>
+                <Button
+                  onClick={handleTestNotification}
+                  variant="secondary"
+                  disabled={isTesting}
+                  className="flex items-center gap-2"
+                >
+                  <FiCheck />
+                  {isTesting ? 'جاري الإرسال...' : 'اختبار'}
+                </Button>
+              </div>
             </div>
           </div>
         )}

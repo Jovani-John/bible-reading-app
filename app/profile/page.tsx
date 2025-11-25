@@ -3,9 +3,16 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { FiArrowRight, FiBell, FiMoon, FiSun, FiDownload, FiTrash2, FiUser } from 'react-icons/fi';
+import { FiArrowRight, FiBell, FiMoon, FiSun, FiDownload, FiTrash2, FiUser, FiCheck } from 'react-icons/fi';
 import { BiCross } from 'react-icons/bi';
-import { getFromLocalStorage, saveToLocalStorage, requestNotificationPermission } from '@/lib/utils';
+import { 
+  getFromLocalStorage, 
+  saveToLocalStorage, 
+  requestNotificationPermission, 
+  scheduleNotification,
+  sendTestNotification,
+  checkNotificationSupport 
+} from '@/lib/utils';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
@@ -39,6 +46,7 @@ export default function ProfilePage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationTime, setNotificationTime] = useState('09:00');
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
 
   useEffect(() => {
     // Load user data with proper typing
@@ -95,11 +103,21 @@ export default function ProfilePage() {
     if (!currentUser) return;
 
     if (!notificationsEnabled) {
-      const granted = await requestNotificationPermission();
-      if (!granted) {
-        toast.error('يجب السماح بالإشعارات أولاً');
+      // Check if notifications are supported
+      if (!checkNotificationSupport()) {
+        toast.error('المتصفح لا يدعم الإشعارات. جرب استخدام Chrome أو Firefox.');
         return;
       }
+
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        toast.error('يجب السماح بالإشعارات أولاً من إعدادات المتصفح');
+        return;
+      }
+      
+      // Schedule the first notification
+      scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
+      toast.success('تم تفعيل الإشعارات بنجاح');
     }
 
     const newState = !notificationsEnabled;
@@ -122,7 +140,25 @@ export default function ProfilePage() {
       saveToLocalStorage('users', users);
     }
     
-    toast.success(newState ? 'تم تفعيل الإشعارات' : 'تم إيقاف الإشعارات');
+    if (newState) {
+      toast.success('تم تفعيل الإشعارات');
+    } else {
+      toast.success('تم إيقاف الإشعارات');
+    }
+  };
+
+  const handleTestNotification = async () => {
+    if (!currentUser) return;
+
+    setIsTestingNotification(true);
+    try {
+      await sendTestNotification('هذا إشعار تجريبي للتأكد من عمل الإشعارات 📖');
+      toast.success('تم إرسال إشعار تجريبي');
+    } catch (error) {
+      toast.error('فشل إرسال الإشعار التجريبي. تأكد من السماح بالإشعارات.');
+    } finally {
+      setIsTestingNotification(false);
+    }
   };
 
   const saveNotificationTime = () => {
@@ -141,6 +177,11 @@ export default function ProfilePage() {
     if (userIndex > -1) {
       users[userIndex] = updatedUser;
       saveToLocalStorage('users', users);
+    }
+    
+    // Reschedule notification with new time
+    if (notificationsEnabled) {
+      scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
     }
     
     toast.success('تم حفظ وقت الإشعار');
@@ -306,25 +347,47 @@ export default function ProfilePage() {
             </div>
 
             {notificationsEnabled && (
-              <div>
-                <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
-                  وقت الإشعار
-                </label>
-                <div className="flex gap-4">
-                  <input
-                    type="time"
-                    value={notificationTime}
-                    onChange={(e) => setNotificationTime(e.target.value)}
-                    className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                  />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={saveNotificationTime}
-                    className="bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors"
-                  >
-                    حفظ
-                  </motion.button>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
+                    وقت الإشعار
+                  </label>
+                  <div className="flex gap-4">
+                    <input
+                      type="time"
+                      value={notificationTime}
+                      onChange={(e) => setNotificationTime(e.target.value)}
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={saveNotificationTime}
+                      className="bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors"
+                    >
+                      حفظ
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Test Notification Button */}
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-800 dark:text-gray-100">اختبار الإشعارات</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">تأكد من عمل الإشعارات</div>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleTestNotification}
+                      disabled={isTestingNotification}
+                      className="bg-green-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <FiCheck />
+                      {isTestingNotification ? 'جاري الإرسال...' : 'اختبار'}
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             )}
