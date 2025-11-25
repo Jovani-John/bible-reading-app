@@ -3,6 +3,15 @@
 import { useEffect } from 'react';
 import { registerServiceWorker, restoreScheduledNotifications, getFromLocalStorage } from '@/lib/utils';
 
+// أضف هذا الـ interface
+interface User {
+  notificationsEnabled?: boolean;
+  notificationTime?: string;
+  name?: string;
+  email?: string;
+  // أي خواص تانية محتاجها
+}
+
 export default function ServiceWorkerInitializer() {
   useEffect(() => {
     const initServiceWorker = async () => {
@@ -15,8 +24,8 @@ export default function ServiceWorkerInitializer() {
         if (registration) {
           console.log('✅ Service Worker registered successfully');
           
-          // التحقق من وجود مستخدم مسجل
-          const currentUser = getFromLocalStorage('currentUser', null);
+          // التحقق من وجود مستخدم مسجل مع تحديد النوع
+          const currentUser = getFromLocalStorage<User | null>('currentUser', null);
           
           if (currentUser?.notificationsEnabled) {
             console.log('👤 User has notifications enabled, restoring...');
