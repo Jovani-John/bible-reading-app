@@ -175,8 +175,7 @@ export const sendTestNotification = async (message: string = 'هذا إشعار 
         body: message,
         icon: '/icon-192x192.png',
         badge: '/icon-192x192.png',
-        tag: 'test-notification',
-        vibrate: [200, 100, 200]
+        tag: 'test-notification'
       });
       console.log('✅ Test notification sent directly');
     }
