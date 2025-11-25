@@ -178,12 +178,12 @@ export const sendTestNotification = async (message: string = 'هذا إشعار 
   }
 };
 
-// دالة للتحقق من دعم الإشعارات
+// دالة للتحقق من دعم الإشعارات - معدّلة ✅
 export const checkNotificationSupport = (): boolean => {
   return typeof window !== 'undefined' && 
          'Notification' in window && 
-         'serviceWorker' in navigator &&
-         'PushManager' in window;
+         'serviceWorker' in navigator;
+  // ✅ تم إزالة 'PushManager' in window
 };
 
 // دوال إضافية للمساعدة في Dashboard
