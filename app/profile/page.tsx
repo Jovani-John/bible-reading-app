@@ -105,18 +105,17 @@ export default function ProfilePage() {
     toast.success(newDarkMode ? 'تم تفعيل الوضع الليلي' : 'تم تفعيل الوضع النهاري');
   };
 
-  const toggleNotifications = async () => {
-    if (!currentUser) return;
+const toggleNotifications = async () => {
+  if (!currentUser) return;
 
-    if (!notificationsEnabled) {
-      // التحقق من دعم الإشعارات
-      if (!checkNotificationSupport()) {
-        toast.error('المتصفح لا يدعم الإشعارات. جرب Chrome أو Firefox.');
-        return;
-      }
-
-      // طلب الإذن
-      const granted = await requestNotificationPermission();
+  if (!notificationsEnabled) {
+    // ✅ نطلب الإذن مباشرة بدون التحقق الأول
+    const granted = await requestNotificationPermission();
+    
+    if (!granted) {
+      toast.error('يجب السماح بالإشعارات من إعدادات المتصفح');
+      return;
+    }
       if (!granted) {
         toast.error('يجب السماح بالإشعارات من إعدادات المتصفح');
         return;
