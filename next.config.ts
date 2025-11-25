@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  // إزالة swcMinify لأنه لم يعد مدعوماً في الإصدارات الحديثة
   experimental: {
-    reactCompiler: true,
+    // إزالة reactCompiler من هنا
+  },
+  // إضافة reactCompiler في المستوى الأعلى
+  reactCompiler: {
+    compilationMode: 'annotation',
   },
   images: {
     domains: [],

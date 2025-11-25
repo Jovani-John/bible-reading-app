@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react'; // أضف use هنا
+import { useState, useEffect, use } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { FiArrowRight, FiCheckCircle, FiClock, FiBook, FiEdit3, FiSave } from 'react-icons/fi';
@@ -9,26 +9,58 @@ import { getReadingByDay } from '@/lib/readingPlan';
 import { getFromLocalStorage, saveToLocalStorage, calculateReadingTime, formatDate, generateId } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
+// Define TypeScript interfaces
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Note {
+  id: string;
+  userId: string;
+  day: number;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Progress {
+  userId: string;
+  completedDays: number[];
+  notes: Note[];
+  lastUpdated: string;
+}
+
+interface Reading {
+  day: number;
+  date: string;
+  book?: string;
+  summary?: string;
+  readings: string[];
+}
+
 export default function ReadingPage({ params }: { params: Promise<{ day: string }> }) {
-  // استخدم use() لفك الـ Promise
   const { day } = use(params);
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [progress, setProgress] = useState<any>(null);
-  const [reading, setReading] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [reading, setReading] = useState<Reading | null>(null);
   const [note, setNote] = useState('');
   const [tags, setTags] = useState('');
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const user = getFromLocalStorage('currentUser', null);
+    const user = getFromLocalStorage<User | null>('currentUser', null);
     if (!user) {
       router.push('/login');
       return;
     }
     
     setCurrentUser(user);
-    const userProgress = getFromLocalStorage(`progress_${user.id}`, {
+    const userProgress = getFromLocalStorage<Progress>(`progress_${user.id}`, {
       userId: user.id,
       completedDays: [],
       notes: [],
@@ -36,19 +68,34 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
     });
     setProgress(userProgress);
     
-    const dayReading = getReadingByDay(parseInt(day)); // استخدم day بدل params.day
+    const dayNumber = parseInt(day);
+    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 61) {
+      toast.error('اليوم المطلوب غير موجود');
+      router.push('/dashboard');
+      return;
+    }
+    
+    const dayReading = getReadingByDay(dayNumber);
+    if (!dayReading) {
+      toast.error('لم يتم العثور على بيانات القراءة');
+      router.push('/dashboard');
+      return;
+    }
+    
     setReading(dayReading);
 
     // Load existing note
-    const existingNote = userProgress.notes.find((n: any) => n.day === parseInt(day));
+    const existingNote = userProgress.notes.find((n: Note) => n.day === dayNumber);
     if (existingNote) {
       setNote(existingNote.content);
       setTags(existingNote.tags.join(', '));
     }
-  }, [day, router]); // غيّر params.day إلى day
+    
+    setIsLoading(false);
+  }, [day, router]);
 
   const toggleCompletion = () => {
-    if (!progress || !reading) return;
+    if (!progress || !reading || !currentUser) return;
     
     const completedDays = [...progress.completedDays];
     const index = completedDays.indexOf(reading.day);
@@ -61,7 +108,7 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
       toast.success('رائع! تم إكمال القراءة');
     }
     
-    const updatedProgress = {
+    const updatedProgress: Progress = {
       ...progress,
       completedDays,
       lastUpdated: new Date().toISOString()
@@ -72,12 +119,12 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
   };
 
   const saveNote = () => {
-    if (!progress || !reading) return;
+    if (!progress || !reading || !currentUser) return;
 
-    const notes = progress.notes.filter((n: any) => n.day !== reading.day);
+    const notes = progress.notes.filter((n: Note) => n.day !== reading.day);
     
     if (note.trim()) {
-      const newNote = {
+      const newNote: Note = {
         id: generateId(),
         userId: currentUser.id,
         day: reading.day,
@@ -89,7 +136,7 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
       notes.push(newNote);
     }
 
-    const updatedProgress = {
+    const updatedProgress: Progress = {
       ...progress,
       notes,
       lastUpdated: new Date().toISOString()
@@ -101,10 +148,18 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
     toast.success('تم حفظ الملاحظة');
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <div className="text-xl text-gray-800">جاري التحميل...</div>
+      </div>
+    );
+  }
+
   if (!currentUser || !progress || !reading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">جاري التحميل...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+        <div className="text-xl text-gray-800">حدث خطأ في تحميل البيانات</div>
       </div>
     );
   }
@@ -264,7 +319,7 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
                   <button
                     onClick={() => {
                       setIsEditingNote(false);
-                      const existingNote = progress.notes.find((n: any) => n.day === reading.day);
+                      const existingNote = progress.notes.find((n: Note) => n.day === reading.day);
                       if (existingNote) {
                         setNote(existingNote.content);
                         setTags(existingNote.tags.join(', '));

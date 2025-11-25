@@ -1,10 +1,12 @@
+// lib/types.ts
 export interface User {
   id: string;
   name: string;
   email: string;
-  createdAt: Date;
+  password: string;
+  createdAt: string; // تم التغيير إلى string
+  notificationsEnabled?: boolean;
   notificationTime?: string;
-  notificationsEnabled: boolean;
 }
 
 export interface Note {
@@ -13,28 +15,21 @@ export interface Note {
   day: number;
   content: string;
   tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface UserProgress {
+export interface Progress {
   userId: string;
   completedDays: number[];
   notes: Note[];
-  lastUpdated: Date;
+  lastUpdated: string;
 }
 
-export interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  unlocked: boolean;
-  unlockedAt?: Date;
-}
-
-export interface DailyVerse {
-  verse: string;
-  reference: string;
+export interface Reading {
+  day: number;
   date: string;
+  book?: string;
+  summary?: string;
+  readings: string[];
 }

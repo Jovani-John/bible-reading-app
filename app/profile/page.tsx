@@ -9,18 +9,40 @@ import { getFromLocalStorage, saveToLocalStorage, requestNotificationPermission 
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
+// Define TypeScript interfaces
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  notificationsEnabled?: boolean;
+  notificationTime?: string;
+}
+
+interface Note {
+  day: number;
+  content: string;
+  tags?: string[];
+}
+
+interface Progress {
+  userId: string;
+  completedDays: number[];
+  notes: Note[];
+  lastUpdated: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [progress, setProgress] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [progress, setProgress] = useState<Progress | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationTime, setNotificationTime] = useState('09:00');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load user data
-    const user = getFromLocalStorage('currentUser', null);
+    // Load user data with proper typing
+    const user = getFromLocalStorage<User | null>('currentUser', null);
     if (!user) {
       router.push('/login');
       return;
@@ -30,7 +52,7 @@ export default function ProfilePage() {
     setNotificationsEnabled(user.notificationsEnabled || false);
     setNotificationTime(user.notificationTime || '09:00');
     
-    const userProgress = getFromLocalStorage(`progress_${user.id}`, {
+    const userProgress = getFromLocalStorage<Progress>(`progress_${user.id}`, {
       userId: user.id,
       completedDays: [],
       notes: [],
@@ -38,11 +60,11 @@ export default function ProfilePage() {
     });
     setProgress(userProgress);
 
-    // Load dark mode setting - استخدم getFromLocalStorage بدل localStorage مباشر
-    const savedDarkMode = getFromLocalStorage('darkMode', false);
+    // Load dark mode setting
+    const savedDarkMode = getFromLocalStorage<boolean>('darkMode', false);
     setDarkMode(savedDarkMode);
     
-    // طبق الـ dark mode على الـ HTML element
+    // Apply dark mode to HTML element
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -56,10 +78,10 @@ export default function ProfilePage() {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     
-    // احفظ باستخدام saveToLocalStorage
+    // Save using saveToLocalStorage
     saveToLocalStorage('darkMode', newDarkMode);
     
-    // طبق التغيير على الـ document
+    // Apply change to document
     if (newDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -70,6 +92,8 @@ export default function ProfilePage() {
   };
 
   const toggleNotifications = async () => {
+    if (!currentUser) return;
+
     if (!notificationsEnabled) {
       const granted = await requestNotificationPermission();
       if (!granted) {
@@ -81,7 +105,7 @@ export default function ProfilePage() {
     const newState = !notificationsEnabled;
     setNotificationsEnabled(newState);
     
-    const updatedUser = {
+    const updatedUser: User = {
       ...currentUser,
       notificationsEnabled: newState,
       notificationTime
@@ -91,8 +115,8 @@ export default function ProfilePage() {
     saveToLocalStorage('currentUser', updatedUser);
     
     // Update in users array
-    const users = getFromLocalStorage('users', []);
-    const userIndex = users.findIndex((u: any) => u.id === currentUser.id);
+    const users = getFromLocalStorage<User[]>('users', []);
+    const userIndex = users.findIndex((u: User) => u.id === currentUser.id);
     if (userIndex > -1) {
       users[userIndex] = updatedUser;
       saveToLocalStorage('users', users);
@@ -102,7 +126,9 @@ export default function ProfilePage() {
   };
 
   const saveNotificationTime = () => {
-    const updatedUser = {
+    if (!currentUser) return;
+
+    const updatedUser: User = {
       ...currentUser,
       notificationTime
     };
@@ -110,8 +136,8 @@ export default function ProfilePage() {
     setCurrentUser(updatedUser);
     saveToLocalStorage('currentUser', updatedUser);
     
-    const users = getFromLocalStorage('users', []);
-    const userIndex = users.findIndex((u: any) => u.id === currentUser.id);
+    const users = getFromLocalStorage<User[]>('users', []);
+    const userIndex = users.findIndex((u: User) => u.id === currentUser.id);
     if (userIndex > -1) {
       users[userIndex] = updatedUser;
       saveToLocalStorage('users', users);
@@ -133,7 +159,7 @@ export default function ProfilePage() {
     
     let yPosition = 40;
     
-    progress.notes.forEach((note: any) => {
+    progress.notes.forEach((note: Note) => {
       if (yPosition > 270) {
         doc.addPage();
         yPosition = 20;
@@ -164,8 +190,10 @@ export default function ProfilePage() {
   };
 
   const clearAllData = () => {
+    if (!currentUser) return;
+
     if (confirm('هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.')) {
-      const updatedProgress = {
+      const updatedProgress: Progress = {
         userId: currentUser.id,
         completedDays: [],
         notes: [],

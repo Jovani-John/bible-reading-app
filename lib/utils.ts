@@ -57,7 +57,9 @@ export const generateId = (): string => {
 
 export const saveToLocalStorage = (key: string, data: any): void => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
   } catch (error) {
     console.error('Error saving to localStorage:', error);
   }
@@ -65,8 +67,11 @@ export const saveToLocalStorage = (key: string, data: any): void => {
 
 export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
   try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    if (typeof window !== 'undefined') {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
+    }
+    return defaultValue;
   } catch (error) {
     console.error('Error reading from localStorage:', error);
     return defaultValue;
@@ -74,7 +79,7 @@ export const getFromLocalStorage = <T>(key: string, defaultValue: T): T => {
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
-  if (!('Notification' in window)) {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
     return false;
   }
   

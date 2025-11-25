@@ -9,39 +9,60 @@ import { getTodayReading, getProgressPercentage, getStreak, readingPlan } from '
 import { getFromLocalStorage, saveToLocalStorage, getGreeting, formatDate, getDayStatus } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
+// Add type definitions
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  notificationsEnabled?: boolean;
+  notificationTime?: string;
+}
+
+interface Progress {
+  userId: string;
+  completedDays: number[];
+  notes: any[];
+  lastUpdated: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [progress, setProgress] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [progress, setProgress] = useState<Progress | null>(null);
   const [todayReading, setTodayReading] = useState<any>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const user = getFromLocalStorage('currentUser', null);
+    const user = getFromLocalStorage<User | null>('currentUser', null);
     if (!user) {
       router.push('/login');
       return;
     }
     
     setCurrentUser(user);
-    const userProgress = getFromLocalStorage(`progress_${user.id}`, {
+    const userProgress = getFromLocalStorage<Progress>(`progress_${user.id}`, {
       userId: user.id,
       completedDays: [],
       notes: [],
       lastUpdated: new Date().toISOString()
     });
+    
     setProgress(userProgress);
     setTodayReading(getTodayReading());
+    setIsLoading(false);
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('currentUser');
+    }
     toast.success('تم تسجيل الخروج بنجاح');
     router.push('/');
   };
 
   const toggleDayCompletion = (dayNumber: number) => {
-    if (!progress) return;
+    if (!progress || !currentUser) return;
     
     const completedDays = [...progress.completedDays];
     const index = completedDays.indexOf(dayNumber);
@@ -54,7 +75,7 @@ export default function DashboardPage() {
       toast.success('أحسنت! تم إكمال القراءة');
     }
     
-    const updatedProgress = {
+    const updatedProgress: Progress = {
       ...progress,
       completedDays,
       lastUpdated: new Date().toISOString()
@@ -64,10 +85,10 @@ export default function DashboardPage() {
     saveToLocalStorage(`progress_${currentUser.id}`, updatedProgress);
   };
 
-  if (!currentUser || !progress) {
+  if (isLoading || !currentUser || !progress) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">جاري التحميل...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="text-xl text-gray-800 dark:text-gray-200">جاري التحميل...</div>
       </div>
     );
   }
@@ -76,24 +97,24 @@ export default function DashboardPage() {
   const streak = getStreak(progress.completedDays);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
       {/* Navigation */}
-      <nav className="bg-white shadow-md">
+      <nav className="bg-white dark:bg-gray-800 shadow-md transition-colors duration-300">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <BiCross className="text-3xl text-primary-600" />
-            <span className="text-xl font-bold text-gray-800">قراءة يوم</span>
+            <BiCross className="text-3xl text-primary-600 dark:text-primary-400" />
+            <span className="text-xl font-bold text-gray-800 dark:text-gray-100">قراءة يوم</span>
           </div>
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/profile')}
-              className="text-gray-600 hover:text-primary-600 transition-colors"
+              className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             >
               <FiSettings className="text-2xl" />
             </button>
             <button
               onClick={handleLogout}
-              className="text-gray-600 hover:text-red-600 transition-colors"
+              className="text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               <FiLogOut className="text-2xl" />
             </button>
@@ -108,10 +129,10 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
             {getGreeting()}، {currentUser.name}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             استمر في رحلتك مع كلمة الله
           </p>
         </motion.div>
@@ -122,38 +143,38 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg transition-colors duration-300"
           >
             <div className="flex items-center justify-between mb-4">
               <FiCheckCircle className="text-4xl text-green-500" />
-              <span className="text-3xl font-bold text-gray-800">
+              <span className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                 {progress.completedDays.length}
               </span>
             </div>
-            <h3 className="text-gray-600 font-semibold">أيام مكتملة</h3>
-            <div className="mt-4 bg-gray-200 rounded-full h-2">
+            <h3 className="text-gray-600 dark:text-gray-400 font-semibold">أيام مكتملة</h3>
+            <div className="mt-4 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className="bg-green-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
-            <p className="text-sm text-gray-500 mt-2">{progressPercentage}% من الخطة</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{progressPercentage}% من الخطة</p>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg transition-colors duration-300"
           >
             <div className="flex items-center justify-between mb-4">
               <FiAward className="text-4xl text-yellow-500" />
-              <span className="text-3xl font-bold text-gray-800">
+              <span className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                 {streak}
               </span>
             </div>
-            <h3 className="text-gray-600 font-semibold">أيام متتالية</h3>
-            <p className="text-sm text-gray-500 mt-2">
+            <h3 className="text-gray-600 dark:text-gray-400 font-semibold">أيام متتالية</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               {streak > 0 ? 'استمر في التقدم الرائع!' : 'ابدأ سلسلتك اليوم'}
             </p>
           </motion.div>
@@ -162,16 +183,16 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg transition-colors duration-300"
           >
             <div className="flex items-center justify-between mb-4">
               <FiBook className="text-4xl text-blue-500" />
-              <span className="text-3xl font-bold text-gray-800">
+              <span className="text-3xl font-bold text-gray-800 dark:text-gray-100">
                 {61 - progress.completedDays.length}
               </span>
             </div>
-            <h3 className="text-gray-600 font-semibold">أيام متبقية</h3>
-            <p className="text-sm text-gray-500 mt-2">
+            <h3 className="text-gray-600 dark:text-gray-400 font-semibold">أيام متبقية</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               من أصل 61 يوم
             </p>
           </motion.div>
@@ -183,11 +204,11 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-2xl p-8 shadow-lg mb-8"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg mb-8 transition-colors duration-300"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">قراءة اليوم</h2>
-              <span className="text-sm text-gray-500">{formatDate(new Date())}</span>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">قراءة اليوم</h2>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(new Date())}</span>
             </div>
             
             <div className="mb-6">
@@ -195,7 +216,7 @@ export default function DashboardPage() {
                 {todayReading.readings.map((reading: string, index: number) => (
                   <span
                     key={index}
-                    className="bg-primary-100 text-primary-700 px-4 py-2 rounded-lg font-semibold"
+                    className="bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-4 py-2 rounded-lg font-semibold"
                   >
                     {reading}
                   </span>
@@ -203,8 +224,8 @@ export default function DashboardPage() {
               </div>
               
               {todayReading.summary && (
-                <div className="bg-blue-50 border-r-4 border-blue-500 p-4 rounded-lg">
-                  <p className="text-gray-700">{todayReading.summary}</p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-r-4 border-blue-500 p-4 rounded-lg">
+                  <p className="text-gray-700 dark:text-gray-300">{todayReading.summary}</p>
                 </div>
               )}
             </div>
@@ -224,7 +245,7 @@ export default function DashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => toggleDayCompletion(todayReading.day)}
-                  className="px-6 py-3 bg-green-100 text-green-700 rounded-xl font-bold border-2 border-green-500"
+                  className="px-6 py-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold border-2 border-green-500"
                 >
                   <FiCheckCircle className="text-2xl" />
                 </motion.button>
@@ -233,7 +254,7 @@ export default function DashboardPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => toggleDayCompletion(todayReading.day)}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold"
+                  className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold"
                 >
                   تم
                 </motion.button>
@@ -247,13 +268,13 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl p-8 shadow-lg"
+          className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg transition-colors duration-300"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">خطة القراءة</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">خطة القراءة</h2>
             <button
               onClick={() => setShowCalendar(!showCalendar)}
-              className="text-primary-600 hover:text-primary-700 font-semibold"
+              className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-semibold"
             >
               {showCalendar ? 'إخفاء' : 'عرض الكل'}
             </button>
@@ -276,9 +297,9 @@ export default function DashboardPage() {
                     aspect-square rounded-lg flex items-center justify-center font-bold text-sm
                     transition-all duration-300
                     ${status === 'completed' ? 'bg-green-500 text-white' : ''}
-                    ${status === 'current' ? 'bg-primary-600 text-white ring-4 ring-primary-200' : ''}
-                    ${status === 'available' ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : ''}
-                    ${status === 'locked' ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}
+                    ${status === 'current' ? 'bg-primary-600 text-white ring-4 ring-primary-200 dark:ring-primary-800' : ''}
+                    ${status === 'available' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600' : ''}
+                    ${status === 'locked' ? 'bg-gray-50 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : ''}
                   `}
                   disabled={status === 'locked'}
                 >
