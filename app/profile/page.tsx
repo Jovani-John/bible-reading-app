@@ -352,104 +352,7 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* Notifications Settings */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg mb-6 transition-colors duration-300"
-        >
-          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
-            <FiBell className="text-primary-600 dark:text-primary-400" />
-            الإشعارات اليومية
-          </h3>
 
-          <div className="space-y-6">
-            {/* Permission Warning */}
-            {permissionStatus === 'denied' && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-xl p-4 flex items-start gap-3">
-                <FiAlertCircle className="text-yellow-600 dark:text-yellow-400 text-xl flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <div className="font-bold mb-1">تم رفض إذن الإشعارات</div>
-                  <div className="text-xs space-y-1">
-                    <p><strong>للأندرويد:</strong> الإعدادات → التطبيقات → Chrome/المتصفح → الإشعارات → تفعيل</p>
-                    <p><strong>للآيفون:</strong> الإعدادات → Safari → الإشعارات → السماح</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-gray-800 dark:text-gray-100">تفعيل الإشعارات اليومية</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">تذكير يومي بوقت القراءة</div>
-                {notificationStatus && (
-                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">{notificationStatus}</div>
-                )}
-              </div>
-              <button
-                onClick={toggleNotifications}
-                className={`
-                  relative w-14 h-8 rounded-full transition-colors duration-300
-                  ${notificationsEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}
-                `}
-              >
-                <div
-                  className={`
-                    absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300
-                    ${notificationsEnabled ? 'right-1' : 'right-7'}
-                  `}
-                />
-              </button>
-            </div>
-
-            {notificationsEnabled && permissionStatus === 'granted' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
-                    وقت الإشعار اليومي ⏰
-                  </label>
-                  <div className="flex gap-4">
-                    <input
-                      type="time"
-                      value={notificationTime}
-                      onChange={(e) => setNotificationTime(e.target.value)}
-                      className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:outline-none transition-colors bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100"
-                    />
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={saveNotificationTime}
-                      className="bg-primary-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-primary-700 transition-colors"
-                    >
-                      حفظ
-                    </motion.button>
-                  </div>
-                </div>
-
-                {/* Test Notification Button */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-gray-800 dark:text-gray-100">اختبار الإشعارات 🔔</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">تأكد من عمل الإشعارات بشكل صحيح</div>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleTestNotification}
-                      disabled={isTestingNotification}
-                      className="bg-green-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      <FiCheck />
-                      {isTestingNotification ? 'جاري الإرسال...' : 'اختبار الآن'}
-                    </motion.button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </motion.div>
 
         {/* Appearance */}
         <motion.div
