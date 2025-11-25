@@ -148,7 +148,6 @@ export const scheduleNotification = async (time: string, message: string): Promi
           body: message,
           icon: '/icon-192x192.png',
           badge: '/badge-72x72.png',
-          vibrate: [200, 100, 200],
           tag: 'bible-reading-reminder'
         });
       }
