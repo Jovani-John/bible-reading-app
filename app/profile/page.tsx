@@ -1,9 +1,7 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { FiArrowRight, FiBell, FiMoon, FiSun, FiDownload, FiTrash2, FiUser, FiCheck } from 'react-icons/fi';
+import { FiArrowRight, FiBell, FiMoon, FiSun, FiDownload, FiTrash2, FiUser, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { BiCross } from 'react-icons/bi';
 import { 
   getFromLocalStorage, 
@@ -13,7 +11,8 @@ import {
   sendTestNotification,
   checkNotificationSupport,
   cancelScheduledNotifications,
-  restoreScheduledNotifications
+  restoreScheduledNotifications,
+  registerServiceWorker
 } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -49,10 +48,11 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingNotification, setIsTestingNotification] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<string>('');
+  const [permissionStatus, setPermissionStatus] = useState<'default' | 'granted' | 'denied'>('default');
 
   useEffect(() => {
     const initializePage = async () => {
-      // Load user data
+      // تحميل بيانات المستخدم
       const user = getFromLocalStorage<User | null>('currentUser', null);
       if (!user) {
         router.push('/login');
@@ -71,7 +71,7 @@ export default function ProfilePage() {
       });
       setProgress(userProgress);
 
-      // Load dark mode
+      // تحميل الوضع الليلي
       const savedDarkMode = getFromLocalStorage<boolean>('darkMode', false);
       setDarkMode(savedDarkMode);
       
@@ -79,10 +79,20 @@ export default function ProfilePage() {
         document.documentElement.classList.add('dark');
       }
 
-      // استعادة الإشعارات المجدولة
-      if (user.notificationsEnabled) {
-        await restoreScheduledNotifications();
-        setNotificationStatus('✅ الإشعارات مفعّلة ومجدولة');
+      // التحقق من حالة الإشعارات
+      if (checkNotificationSupport()) {
+        setPermissionStatus(Notification.permission);
+        
+        // تسجيل Service Worker
+        await registerServiceWorker();
+        
+        // استعادة الإشعارات المجدولة
+        if (user.notificationsEnabled && Notification.permission === 'granted') {
+          await restoreScheduledNotifications();
+          setNotificationStatus('✅ الإشعارات مفعّلة ومجدولة');
+        }
+      } else {
+        setNotificationStatus('⚠️ المتصفح لا يدعم الإشعارات');
       }
       
       setIsLoading(false);
@@ -105,25 +115,36 @@ export default function ProfilePage() {
     toast.success(newDarkMode ? 'تم تفعيل الوضع الليلي' : 'تم تفعيل الوضع النهاري');
   };
 
-const toggleNotifications = async () => {
-  if (!currentUser) return;
+  const toggleNotifications = async () => {
+    if (!currentUser) return;
 
-  if (!notificationsEnabled) {
-    // ✅ نطلب الإذن مباشرة بدون التحقق الأول
-    const granted = await requestNotificationPermission();
-    
-    if (!granted) {
-      toast.error('يجب السماح بالإشعارات من إعدادات المتصفح');
+    if (!checkNotificationSupport()) {
+      toast.error('المتصفح لا يدعم الإشعارات');
       return;
     }
+
+    if (!notificationsEnabled) {
+      // طلب الإذن
+      const granted = await requestNotificationPermission();
+      
       if (!granted) {
-        toast.error('يجب السماح بالإشعارات من إعدادات المتصفح');
+        setPermissionStatus(Notification.permission);
+        
+        if (Notification.permission === 'denied') {
+          toast.error('⚠️ يجب تفعيل الإشعارات من إعدادات المتصفح\n\nللأندرويد: الإعدادات > التطبيقات > Chrome > الإشعارات\nللآيفون: الإعدادات > Safari > الإشعارات', {
+            duration: 6000
+          });
+        } else {
+          toast.error('يجب السماح بالإشعارات');
+        }
         return;
       }
       
+      setPermissionStatus('granted');
+      
       // جدولة الإشعار
       await scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
-      toast.success('تم تفعيل الإشعارات بنجاح ✅');
+      toast.success('✅ تم تفعيل الإشعارات بنجاح');
       setNotificationStatus('✅ الإشعارات مفعّلة ومجدولة');
     } else {
       // إلغاء الإشعارات
@@ -155,13 +176,25 @@ const toggleNotifications = async () => {
   const handleTestNotification = async () => {
     if (!currentUser) return;
 
+    if (!checkNotificationSupport()) {
+      toast.error('المتصفح لا يدعم الإشعارات');
+      return;
+    }
+
+    if (Notification.permission !== 'granted') {
+      toast.error('يجب تفعيل الإشعارات أولاً');
+      return;
+    }
+
     setIsTestingNotification(true);
     try {
       await sendTestNotification('هذا إشعار تجريبي للتأكد من عمل الإشعارات 📖✨');
-      toast.success('تم إرسال إشعار تجريبي بنجاح! 🔔');
+      toast.success('✅ تم إرسال إشعار تجريبي بنجاح! تحقق من الإشعارات', {
+        duration: 4000
+      });
     } catch (error) {
-      toast.error('فشل إرسال الإشعار. تأكد من السماح بالإشعارات.');
-      console.error(error);
+      console.error('Test notification error:', error);
+      toast.error('❌ فشل إرسال الإشعار. تأكد من السماح بالإشعارات.');
     } finally {
       setIsTestingNotification(false);
     }
@@ -186,7 +219,7 @@ const toggleNotifications = async () => {
     }
     
     // إعادة جدولة الإشعار بالوقت الجديد
-    if (notificationsEnabled) {
+    if (notificationsEnabled && Notification.permission === 'granted') {
       await scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
       setNotificationStatus(`✅ تم تحديث الوقت إلى ${notificationTime}`);
     }
@@ -264,7 +297,6 @@ const toggleNotifications = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
-      {/* Navigation */}
       <nav className="bg-white dark:bg-gray-800 shadow-md transition-colors duration-300">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
           <button
@@ -332,6 +364,20 @@ const toggleNotifications = async () => {
           </h3>
 
           <div className="space-y-6">
+            {/* Permission Warning */}
+            {permissionStatus === 'denied' && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-xl p-4 flex items-start gap-3">
+                <FiAlertCircle className="text-yellow-600 dark:text-yellow-400 text-xl flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <div className="font-bold mb-1">تم رفض إذن الإشعارات</div>
+                  <div className="text-xs space-y-1">
+                    <p><strong>للأندرويد:</strong> الإعدادات → التطبيقات → Chrome/المتصفح → الإشعارات → تفعيل</p>
+                    <p><strong>للآيفون:</strong> الإعدادات → Safari → الإشعارات → السماح</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold text-gray-800 dark:text-gray-100">تفعيل الإشعارات اليومية</div>
@@ -356,7 +402,7 @@ const toggleNotifications = async () => {
               </button>
             </div>
 
-            {notificationsEnabled && (
+            {notificationsEnabled && permissionStatus === 'granted' && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
