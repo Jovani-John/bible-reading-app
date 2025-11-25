@@ -345,12 +345,12 @@ export const getCurrentDay = (): number => {
   const today = new Date();
   const diffTime = Math.abs(today.getTime() - startDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return Math.min(diffDays + 1, 61);
+  return Math.min(diffDays + 1, 40);
 };
 
 export const getDayProgress = (completedDays: number[]): { percentage: number; completed: number; total: number } => {
   const completed = completedDays.length;
-  const total = 61;
+  const total = 40;
   const percentage = Math.round((completed / total) * 100);
   
   return {

@@ -69,7 +69,7 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
     setProgress(userProgress);
     
     const dayNumber = parseInt(day);
-    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 61) {
+    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 40) {
       toast.error('اليوم المطلوب غير موجود');
       router.push('/dashboard');
       return;
@@ -365,7 +365,7 @@ export default function ReadingPage({ params }: { params: Promise<{ day: string 
               اليوم السابق
             </motion.button>
           )}
-          {reading.day < 61 && (
+          {reading.day < 40 && (
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

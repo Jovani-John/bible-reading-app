@@ -345,7 +345,7 @@ export default function ProfilePage() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                {Math.round((progress.completedDays.length / 61) * 100)}%
+                {Math.round((progress.completedDays.length / 40) * 100)}%
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">التقدم</div>
             </div>

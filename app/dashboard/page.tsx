@@ -188,12 +188,12 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <FiBook className="text-4xl text-blue-500" />
               <span className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                {61 - progress.completedDays.length}
+                {40 - progress.completedDays.length}
               </span>
             </div>
             <h3 className="text-gray-600 dark:text-gray-400 font-semibold">أيام متبقية</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              من أصل 61 يوم
+              من أصل 40 يوم
             </p>
           </motion.div>
         </div>
