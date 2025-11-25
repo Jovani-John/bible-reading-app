@@ -11,12 +11,13 @@ import {
   requestNotificationPermission, 
   scheduleNotification,
   sendTestNotification,
-  checkNotificationSupport 
+  checkNotificationSupport,
+  cancelScheduledNotifications,
+  restoreScheduledNotifications
 } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 
-// Define TypeScript interfaces
 interface User {
   id: string;
   name: string;
@@ -47,49 +48,54 @@ export default function ProfilePage() {
   const [notificationTime, setNotificationTime] = useState('09:00');
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingNotification, setIsTestingNotification] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<string>('');
 
   useEffect(() => {
-    // Load user data with proper typing
-    const user = getFromLocalStorage<User | null>('currentUser', null);
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    setCurrentUser(user);
-    setNotificationsEnabled(user.notificationsEnabled || false);
-    setNotificationTime(user.notificationTime || '09:00');
-    
-    const userProgress = getFromLocalStorage<Progress>(`progress_${user.id}`, {
-      userId: user.id,
-      completedDays: [],
-      notes: [],
-      lastUpdated: new Date().toISOString()
-    });
-    setProgress(userProgress);
+    const initializePage = async () => {
+      // Load user data
+      const user = getFromLocalStorage<User | null>('currentUser', null);
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      
+      setCurrentUser(user);
+      setNotificationsEnabled(user.notificationsEnabled || false);
+      setNotificationTime(user.notificationTime || '09:00');
+      
+      const userProgress = getFromLocalStorage<Progress>(`progress_${user.id}`, {
+        userId: user.id,
+        completedDays: [],
+        notes: [],
+        lastUpdated: new Date().toISOString()
+      });
+      setProgress(userProgress);
 
-    // Load dark mode setting
-    const savedDarkMode = getFromLocalStorage<boolean>('darkMode', false);
-    setDarkMode(savedDarkMode);
-    
-    // Apply dark mode to HTML element
-    if (savedDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    
-    setIsLoading(false);
+      // Load dark mode
+      const savedDarkMode = getFromLocalStorage<boolean>('darkMode', false);
+      setDarkMode(savedDarkMode);
+      
+      if (savedDarkMode) {
+        document.documentElement.classList.add('dark');
+      }
+
+      // استعادة الإشعارات المجدولة
+      if (user.notificationsEnabled) {
+        await restoreScheduledNotifications();
+        setNotificationStatus('✅ الإشعارات مفعّلة ومجدولة');
+      }
+      
+      setIsLoading(false);
+    };
+
+    initializePage();
   }, [router]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
-    
-    // Save using saveToLocalStorage
     saveToLocalStorage('darkMode', newDarkMode);
     
-    // Apply change to document
     if (newDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -103,21 +109,28 @@ export default function ProfilePage() {
     if (!currentUser) return;
 
     if (!notificationsEnabled) {
-      // Check if notifications are supported
+      // التحقق من دعم الإشعارات
       if (!checkNotificationSupport()) {
-        toast.error('المتصفح لا يدعم الإشعارات. جرب استخدام Chrome أو Firefox.');
+        toast.error('المتصفح لا يدعم الإشعارات. جرب Chrome أو Firefox.');
         return;
       }
 
+      // طلب الإذن
       const granted = await requestNotificationPermission();
       if (!granted) {
-        toast.error('يجب السماح بالإشعارات أولاً من إعدادات المتصفح');
+        toast.error('يجب السماح بالإشعارات من إعدادات المتصفح');
         return;
       }
       
-      // Schedule the first notification
-      scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
-      toast.success('تم تفعيل الإشعارات بنجاح');
+      // جدولة الإشعار
+      await scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
+      toast.success('تم تفعيل الإشعارات بنجاح ✅');
+      setNotificationStatus('✅ الإشعارات مفعّلة ومجدولة');
+    } else {
+      // إلغاء الإشعارات
+      cancelScheduledNotifications();
+      toast.success('تم إيقاف الإشعارات');
+      setNotificationStatus('');
     }
 
     const newState = !notificationsEnabled;
@@ -132,18 +145,11 @@ export default function ProfilePage() {
     setCurrentUser(updatedUser);
     saveToLocalStorage('currentUser', updatedUser);
     
-    // Update in users array
     const users = getFromLocalStorage<User[]>('users', []);
     const userIndex = users.findIndex((u: User) => u.id === currentUser.id);
     if (userIndex > -1) {
       users[userIndex] = updatedUser;
       saveToLocalStorage('users', users);
-    }
-    
-    if (newState) {
-      toast.success('تم تفعيل الإشعارات');
-    } else {
-      toast.success('تم إيقاف الإشعارات');
     }
   };
 
@@ -152,16 +158,17 @@ export default function ProfilePage() {
 
     setIsTestingNotification(true);
     try {
-      await sendTestNotification('هذا إشعار تجريبي للتأكد من عمل الإشعارات 📖');
-      toast.success('تم إرسال إشعار تجريبي');
+      await sendTestNotification('هذا إشعار تجريبي للتأكد من عمل الإشعارات 📖✨');
+      toast.success('تم إرسال إشعار تجريبي بنجاح! 🔔');
     } catch (error) {
-      toast.error('فشل إرسال الإشعار التجريبي. تأكد من السماح بالإشعارات.');
+      toast.error('فشل إرسال الإشعار. تأكد من السماح بالإشعارات.');
+      console.error(error);
     } finally {
       setIsTestingNotification(false);
     }
   };
 
-  const saveNotificationTime = () => {
+  const saveNotificationTime = async () => {
     if (!currentUser) return;
 
     const updatedUser: User = {
@@ -179,12 +186,13 @@ export default function ProfilePage() {
       saveToLocalStorage('users', users);
     }
     
-    // Reschedule notification with new time
+    // إعادة جدولة الإشعار بالوقت الجديد
     if (notificationsEnabled) {
-      scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
+      await scheduleNotification(notificationTime, 'حان وقت قراءة الكتاب المقدس اليوم! 📖');
+      setNotificationStatus(`✅ تم تحديث الوقت إلى ${notificationTime}`);
     }
     
-    toast.success('تم حفظ وقت الإشعار');
+    toast.success('تم حفظ وقت الإشعار بنجاح ⏰');
   };
 
   const exportNotes = () => {
@@ -227,7 +235,7 @@ export default function ProfilePage() {
     });
     
     doc.save('bible-reading-notes.pdf');
-    toast.success('تم تصدير الملاحظات بنجاح');
+    toast.success('تم تصدير الملاحظات بنجاح 📄');
   };
 
   const clearAllData = () => {
@@ -243,7 +251,7 @@ export default function ProfilePage() {
       
       setProgress(updatedProgress);
       saveToLocalStorage(`progress_${currentUser.id}`, updatedProgress);
-      toast.success('تم حذف جميع البيانات');
+      toast.success('تم حذف جميع البيانات 🗑️');
     }
   };
 
@@ -321,7 +329,7 @@ export default function ProfilePage() {
         >
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6 flex items-center gap-2">
             <FiBell className="text-primary-600 dark:text-primary-400" />
-            الإشعارات
+            الإشعارات اليومية
           </h3>
 
           <div className="space-y-6">
@@ -329,6 +337,9 @@ export default function ProfilePage() {
               <div>
                 <div className="font-semibold text-gray-800 dark:text-gray-100">تفعيل الإشعارات اليومية</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">تذكير يومي بوقت القراءة</div>
+                {notificationStatus && (
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">{notificationStatus}</div>
+                )}
               </div>
               <button
                 onClick={toggleNotifications}
@@ -350,7 +361,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
-                    وقت الإشعار
+                    وقت الإشعار اليومي ⏰
                   </label>
                   <div className="flex gap-4">
                     <input
@@ -374,8 +385,8 @@ export default function ProfilePage() {
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-gray-800 dark:text-gray-100">اختبار الإشعارات</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">تأكد من عمل الإشعارات</div>
+                      <div className="font-semibold text-gray-800 dark:text-gray-100">اختبار الإشعارات 🔔</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">تأكد من عمل الإشعارات بشكل صحيح</div>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -385,7 +396,7 @@ export default function ProfilePage() {
                       className="bg-green-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       <FiCheck />
-                      {isTestingNotification ? 'جاري الإرسال...' : 'اختبار'}
+                      {isTestingNotification ? 'جاري الإرسال...' : 'اختبار الآن'}
                     </motion.button>
                   </div>
                 </div>

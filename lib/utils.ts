@@ -147,7 +147,7 @@ export const scheduleNotification = async (time: string, message: string): Promi
         new Notification('تذكير قراءة الكتاب المقدس', {
           body: message,
           icon: '/icon-192x192.png',
-          badge: '/badge-72x72.png',
+          badge: '/icon-192x192.png',
           tag: 'bible-reading-reminder'
         });
       }
@@ -170,7 +170,7 @@ export const sendTestNotification = async (message: string = 'هذا إشعار 
     new Notification('تذكير قراءة الكتاب المقدس', {
       body: message,
       icon: '/icon-192x192.png',
-      badge: '/badge-72x72.png',
+      badge: '/icon-192x192.png',
       tag: 'test-notification'
     });
   } catch (error) {
@@ -246,4 +246,77 @@ export const validateEmail = (email: string): boolean => {
 
 export const validatePassword = (password: string): boolean => {
   return password.length >= 6;
+};
+
+// ========================================
+// Service Worker & Notifications Functions
+// ========================================
+
+let swRegistration: ServiceWorkerRegistration | null = null;
+
+/**
+ * تسجيل Service Worker
+ */
+export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    console.log('Service Workers not supported');
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/'
+    });
+    
+    console.log('✅ Service Worker registered successfully:', registration);
+    swRegistration = registration;
+
+    if (registration.installing) {
+      registration.installing.addEventListener('statechange', (e: Event) => {
+        const target = e.target as ServiceWorker;
+        if (target.state === 'activated') {
+          console.log('✅ Service Worker activated');
+        }
+      });
+    }
+
+    return registration;
+  } catch (error) {
+    console.error('❌ Service Worker registration failed:', error);
+    return null;
+  }
+};
+
+/**
+ * إلغاء جدولة الإشعارات
+ */
+export const cancelScheduledNotifications = (): void => {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('notificationSchedule');
+    }
+    console.log('✅ Scheduled notifications cancelled');
+  } catch (error) {
+    console.error('❌ Error cancelling notifications:', error);
+  }
+};
+
+/**
+ * استعادة الإشعارات المجدولة عند فتح التطبيق
+ */
+export const restoreScheduledNotifications = async (): Promise<void> => {
+  try {
+    const schedule = getFromLocalStorage<{
+      time: string;
+      message: string;
+      enabled: boolean;
+    } | null>('notificationSchedule', null);
+
+    if (schedule && schedule.enabled) {
+      await scheduleNotification(schedule.time, schedule.message);
+      console.log('✅ Scheduled notifications restored');
+    }
+  } catch (error) {
+    console.error('❌ Error restoring notifications:', error);
+  }
 };
