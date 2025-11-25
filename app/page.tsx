@@ -54,13 +54,13 @@ export default function Home() {
             قراءة يوم العهد الجديد
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            "لتسكن فيكم كلمة المسيح بغنى" (كولوسي ٣:١٦)
+            "لتسكن فيكم كلمة المسيح بغنى" ( )
           </p>
           <p className="text-lg text-gray-500 mt-4">
             رحلة روحية لإكمال قراءة العهد الجديد في شهرين
           </p>
         </motion.div>
-
+ 
         {/* Features Grid */}
         <motion.div 
           initial={{ opacity: 0 }}
